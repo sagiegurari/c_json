@@ -40,7 +40,13 @@ void test_impl()
   assert_true_with_description(value->type == JSON_TYPE_NUMBER, "number type for 123.45 not set");
   assert_num_equal(value->value->value_number, 123.45L);
   json_release_value(value);
-}
+
+  value = json_parse("-12345");
+  assert_true_with_description(value != NULL, "number -12345 not detected");
+  assert_true_with_description(value->type == JSON_TYPE_NUMBER, "number type for -12345 not set");
+  assert_num_equal(value->value->value_number, -12345);
+  json_release_value(value);
+} /* test_impl */
 
 
 int main()

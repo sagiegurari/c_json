@@ -50,6 +50,13 @@ struct JsonValue *json_parse(char *text)
 
   _json_free(trimmed_text);
 
+  if (offset < length)
+  {
+    // we have some leftovers that we can't parse
+    json_release_value(value);
+    return(NULL);
+  }
+
   return(value);
 }
 
@@ -152,7 +159,7 @@ static struct JsonValue *_json_parse(char *text, size_t length, size_t *offset)
     return(_json_parse_array(text, length, offset));
   }
 
-  if (isdigit(text[*offset]))
+  if (text[*offset] == '-' || isdigit(text[*offset]))
   {
     return(_json_parse_number(text, length, offset));
   }
@@ -221,7 +228,11 @@ static struct JsonValue *_json_parse_number(char *text, size_t length, size_t *o
   for (size_t index = start; index < length; index++)
   {
     char character = text[index];
-    if (character == '.' && !found_decimal_point)
+    if (index == start && character == '-')
+    {
+      end = end + 1;
+    }
+    else if (character == '.' && !found_decimal_point)
     {
       found_decimal_point = true;
       end                 = end + 1;
@@ -265,8 +276,7 @@ static struct JsonValue *_json_parse_boolean(char *text, size_t length, size_t *
     struct JsonValue *value = _json_create_null_value();
     value->type                 = JSON_TYPE_BOOLEAN;
     value->value->value_boolean = true;
-
-    *offset = *offset + 4;
+    *offset                     = *offset + 4;
 
     return(value);
   }
