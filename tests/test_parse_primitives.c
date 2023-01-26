@@ -38,7 +38,7 @@ void test_impl()
   value = json_parse("123.45");
   assert_true_with_description(value != NULL, "number 123.45 not detected");
   assert_true_with_description(value->type == JSON_TYPE_NUMBER, "number type for 123.45 not set");
-  assert_num_equal(value->value->value_number, 123.45);
+  assert_num_equal(value->value->value_number, 123.45L);
   json_release_value(value);
 }
 
