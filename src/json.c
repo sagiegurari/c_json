@@ -1,5 +1,6 @@
 #include "hashtable.h"
 #include "json.h"
+#include "stringbuffer.h"
 #include "stringfn.h"
 #include "vector.h"
 #include <ctype.h>
@@ -37,18 +38,14 @@ struct JsonValue *json_parse(char *text)
     return(NULL);
   }
 
-  char   *trimmed_text = stringfn_trim(text);
-  size_t length        = strlen(trimmed_text);
+  size_t length = strlen(text);
   if (!length)
   {
-    _json_free(trimmed_text);
     return(NULL);
   }
 
   size_t           offset = 0;
-  struct JsonValue *value = _json_parse(trimmed_text, length, &offset);
-
-  _json_free(trimmed_text);
+  struct JsonValue *value = _json_parse(text, length, &offset);
 
   if (offset < length)
   {
@@ -148,6 +145,22 @@ static struct JsonValue *_json_parse(char *text, size_t length, size_t *offset)
     return(NULL);
   }
 
+  // skip whitespaces
+  for (size_t index = *offset; index < length; index++)
+  {
+    if (!isspace(text[*offset]))
+    {
+      break;
+    }
+
+    *offset = *offset + 1;
+  }
+
+  if (*offset >= length)
+  {
+    return(NULL);
+  }
+
   // detect next value type
   if (text[*offset] == '{')
   {
@@ -180,7 +193,7 @@ static struct JsonValue *_json_parse(char *text, size_t length, size_t *offset)
   }
 
   return(NULL);
-}
+} /* _json_parse */
 
 static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *offset)
 {
@@ -195,7 +208,7 @@ static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *o
 
 static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *offset)
 {
-  if (text == NULL || (*offset + 2 > length))
+  if (text == NULL || (*offset + 2 > length) || text[*offset] != '[')
   {
     return(NULL);
   }
@@ -206,14 +219,89 @@ static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *of
 
 static struct JsonValue *_json_parse_string(char *text, size_t length, size_t *offset)
 {
-  if (text == NULL || (*offset + 2 > length))
+  if (text == NULL || (*offset + 2 > length) || text[*offset] != '"')
   {
     return(NULL);
   }
 
-  // TODO IMPL THIS
-  return(NULL);
-}
+  size_t              delta_offset = 0;
+  bool                in_escape    = false;
+  bool                found_end    = false;
+  struct StringBuffer *buffer      = stringbuffer_new();
+  for (size_t index = *offset + 1; index < length; index++)
+  {
+    char character = text[index];
+
+    if (in_escape)
+    {
+      in_escape    = false;
+      delta_offset = delta_offset + 1;
+
+      if (character == 'b')
+      {
+        stringbuffer_append(buffer, '\b');
+      }
+      else if (character == 'f')
+      {
+        stringbuffer_append(buffer, '\f');
+      }
+      else if (character == 'n')
+      {
+        stringbuffer_append(buffer, '\n');
+      }
+      else if (character == 'r')
+      {
+        stringbuffer_append(buffer, '\r');
+      }
+      else if (character == 't')
+      {
+        stringbuffer_append(buffer, '\t');
+      }
+      else if (character == '"')
+      {
+        stringbuffer_append(buffer, '"');
+      }
+      else if (character == '\\')
+      {
+        stringbuffer_append(buffer, '\\');
+      }
+      else
+      {
+        // invalid/unsupported escape
+        stringbuffer_release(buffer);
+        return(NULL);
+      }
+    }
+    else if (character == '\\')
+    {
+      in_escape = true;
+    }
+    else if (character == '"')
+    {
+      found_end = true;
+      break;
+    }
+    else
+    {
+      stringbuffer_append(buffer, character);
+    }
+  }
+
+  if (!found_end)
+  {
+    stringbuffer_release(buffer);
+    return(NULL);
+  }
+
+  // new offset is now previous offset + 2 (start/end ") + content length + escape characters cound
+  *offset = *offset + delta_offset + stringbuffer_get_content_size(buffer) + 2;
+  struct JsonValue *value = _json_create_null_value();
+  value->type                = JSON_TYPE_STRING;
+  value->value->value_string = stringbuffer_to_string(buffer);
+  stringbuffer_release(buffer);
+
+  return(value);
+} /* _json_parse_string */
 
 static struct JsonValue *_json_parse_number(char *text, size_t length, size_t *offset)
 {
@@ -252,7 +340,7 @@ static struct JsonValue *_json_parse_number(char *text, size_t length, size_t *o
     return(NULL);
   }
 
-  *offset = end + 1;
+  *offset = end;
   struct JsonValue *value = _json_create_null_value();
   value->type = JSON_TYPE_NUMBER;
   char             *subtext = stringfn_substring(text, (int)start, end - start);

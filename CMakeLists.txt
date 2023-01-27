@@ -31,11 +31,12 @@ macro(add_external_lib)
     LIBRARY_PARENT_DIRECTORY target
   )
 endmacro(add_external_lib)
+add_external_lib("string_buffer")
 add_external_lib("stringfn")
 add_external_lib("vector")
 add_external_lib("hashtable")
 
-include_directories(include "${STRINGFN_INCLUDE}" "${VECTOR_INCLUDE}" "${HASHTABLE_INCLUDE}")
+include_directories(include "${STRING_BUFFER_INCLUDE}" "${STRINGFN_INCLUDE}" "${VECTOR_INCLUDE}" "${HASHTABLE_INCLUDE}")
 
 # define all sources
 file(GLOB SOURCES "src/*.c")
@@ -54,7 +55,7 @@ utils_uncrustify(
 )
 
 # create static library
-add_library(${CMAKE_PROJECT_NAME} STATIC ${SOURCES} ${STRINGFN_SOURCES} ${VECTOR_SOURCES} ${HASHTABLE_SOURCES})
+add_library(${CMAKE_PROJECT_NAME} STATIC ${SOURCES} ${STRING_BUFFER_SOURCES} ${STRINGFN_SOURCES} ${VECTOR_SOURCES} ${HASHTABLE_SOURCES})
 if(NOT WIN32)
   set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES COMPILE_FLAGS "${X_CMAKE_C_FLAGS} -Wconversion")
 endif()
