@@ -26,12 +26,11 @@ struct JsonValue
 
 union JsonValueUnion
 {
-  enum JsonType     type;
-  struct JsonObject *value_object;
-  struct JsonArray  *value_array;
-  char              *value_string;
-  long double       value_number;
-  bool              value_boolean;
+  struct JsonObject *object;
+  struct JsonArray  *array;
+  char              *string;
+  long double       number;
+  bool              boolean;
 };
 
 /**
@@ -47,6 +46,11 @@ struct JsonValue *json_parse(char * /* text */);
  * or freed strings must reside in the structure.
  */
 void json_release_value(struct JsonValue *);
+
+/**
+ * Returns the json array size.
+ */
+size_t json_array_size(struct JsonArray *);
 
 #endif
 

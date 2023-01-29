@@ -39,6 +39,18 @@ void assert_true_with_description(bool value, char *description)
 }
 
 
+void assert_size_equal(size_t value1, size_t value2)
+{
+  if (value1 != value2)
+  {
+#ifdef linux
+    printf("Assert Failed, value: %zu not equals to value: %zu", value1, value2);
+#endif
+    test_fail();
+  }
+}
+
+
 void assert_num_equal(long double value1, long double value2)
 {
   if (value1 != value2)
