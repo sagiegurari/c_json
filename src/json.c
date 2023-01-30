@@ -1,16 +1,13 @@
-#include "hashtable.h"
 #include "json.h"
 #include "stringbuffer.h"
 #include "stringfn.h"
-#include "vector.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 // private functions
 static void _json_free(void *);
-static void _json_release_json_object(struct JsonObject *);
-static void _json_release_json_array(struct JsonArray *);
+static void _json_release_json_array(struct Vector *);
 static struct JsonValue *_json_create_null_value();
 static struct JsonValue *_json_parse(char *, size_t /* length */, size_t * /* offset */);
 static struct JsonValue *_json_parse_object(char *, size_t /* length */, size_t * /* offset */);
@@ -20,17 +17,8 @@ static struct JsonValue *_json_parse_number(char *, size_t /* length */, size_t 
 static struct JsonValue *_json_parse_boolean(char *, size_t /* length */, size_t * /* offset */);
 static struct JsonValue *_json_parse_null(char *, size_t /* length */, size_t * /* offset */);
 static bool _json_skip_whitespaces(char *, size_t /* length */, size_t * /* offset */);
-
-struct JsonObject
-{
-  struct HashTable *table;
-};
-
-struct JsonArray
-{
-  struct Vector *vector;
-};
-
+static bool _json_parse_object_key(struct HashTable *, char *, size_t /* length */, size_t * /* offset */);
+static void _json_release_hashtable_key_value(char *, void *);
 
 struct JsonValue *json_parse(char *text)
 {
@@ -69,7 +57,7 @@ void json_release_value(struct JsonValue *value)
   switch (value->type)
   {
   case JSON_TYPE_OBJECT:
-    _json_release_json_object(value->value->object);
+    hashtable_release(value->value->object);
     break;
 
   case JSON_TYPE_ARRAY:
@@ -89,17 +77,6 @@ void json_release_value(struct JsonValue *value)
 }
 
 
-size_t json_array_size(struct JsonArray *array)
-{
-  if (array == NULL)
-  {
-    return(0);
-  }
-
-  return(vector_size(array->vector));
-}
-
-
 static void _json_free(void *value)
 {
   if (value == NULL)
@@ -111,33 +88,20 @@ static void _json_free(void *value)
 }
 
 
-static void _json_release_json_object(struct JsonObject *object)
-{
-  if (object == NULL)
-  {
-    return;
-  }
-
-  hashtable_release(object->table);
-  _json_free(object);
-}
-
-
-static void _json_release_json_array(struct JsonArray *array)
+static void _json_release_json_array(struct Vector *array)
 {
   if (array == NULL)
   {
     return;
   }
 
-  size_t count = vector_size(array->vector);
+  size_t count = vector_size(array);
   for (size_t index = 0; index < count; index++)
   {
-    struct JsonValue *value = vector_get(array->vector, index);
+    struct JsonValue *value = vector_get(array, index);
     json_release_value(value);
   }
-  vector_release(array->vector);
-  _json_free(array);
+  vector_release(array);
 }
 
 static struct JsonValue *_json_create_null_value()
@@ -199,14 +163,69 @@ static struct JsonValue *_json_parse(char *text, size_t length, size_t *offset)
 
 static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *offset)
 {
-  if (text == NULL || (*offset + 2 > length))
+  if (text == NULL || (*offset + 2 > length) || text[*offset] != '{')
   {
     return(NULL);
   }
 
-  // TODO IMPL THIS
-  return(NULL);
-}
+  *offset = *offset + 1;
+
+  struct HashTable *object = hashtable_new();
+  struct JsonValue *value  = _json_create_null_value();
+  value->type          = JSON_TYPE_OBJECT;
+  value->value->object = object;
+
+  bool looking_for_key = false;
+  for ( ; *offset < length; *offset = *offset + 1)
+  {
+    // skip whitespaces
+    if (!_json_skip_whitespaces(text, length, offset))
+    {
+      json_release_value(value);
+      return(NULL);
+    }
+
+    size_t index = *offset;
+
+    if (looking_for_key)
+    {
+      if (text[index] == '"')
+      {
+        looking_for_key = false;
+
+        if (!_json_parse_object_key(object, text, length, offset))
+        {
+          json_release_value(value);
+          return(NULL);
+        }
+      }
+      else
+      {
+        json_release_value(value);
+        return(NULL);
+      }
+    }
+    else if (text[index] == '}')
+    {
+      *offset = *offset + 1;
+      break;
+    }
+    else if (text[index] == '"')
+    {
+      if (!_json_parse_object_key(object, text, length, offset))
+      {
+        json_release_value(value);
+        return(NULL);
+      }
+    }
+    else if (text[index] == ',')
+    {
+      looking_for_key = true;
+    }
+  }
+
+  return(value);
+} /* _json_parse_object */
 
 static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *offset)
 {
@@ -217,8 +236,7 @@ static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *of
 
   *offset = *offset + 1;
 
-  struct JsonArray *array = malloc(sizeof(struct JsonArray));
-  array->vector = vector_new_with_options(100 /* initial size */, true /* allow resize */);
+  struct Vector    *array = vector_new_with_options(100 /* initial size */, true /* allow resize */);
   struct JsonValue *value = _json_create_null_value();
   value->type         = JSON_TYPE_ARRAY;
   value->value->array = array;
@@ -263,7 +281,10 @@ static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *of
         return(NULL);
       }
 
-      vector_push(array->vector, array_item);
+      vector_push(array, array_item);
+
+      // we are in next char now, but for loop will advance it one more, so go back 1
+      *offset = *offset - 1;
     }
     else
     {
@@ -369,23 +390,19 @@ static struct JsonValue *_json_parse_number(char *text, size_t length, size_t *o
   }
 
   size_t start               = *offset;
-  size_t end                 = start;
   bool   found_decimal_point = false;
-  for (size_t index = start; index < length; index++)
+  for ( ; *offset < length; *offset = *offset + 1)
   {
-    char character = text[index];
-    if (index == start && character == '-')
+    size_t index = *offset;
+
+    char   character = text[index];
+    if (isdigit(character) || (index == start && character == '-'))
     {
-      end = end + 1;
+      // continue
     }
     else if (character == '.' && !found_decimal_point)
     {
       found_decimal_point = true;
-      end                 = end + 1;
-    }
-    else if (isdigit(character))
-    {
-      end = end + 1;
     }
     else
     {
@@ -393,15 +410,14 @@ static struct JsonValue *_json_parse_number(char *text, size_t length, size_t *o
     }
   }
 
-  if (start == end)
+  if (start == *offset)
   {
     return(NULL);
   }
 
-  *offset = end;
   struct JsonValue *value = _json_create_null_value();
   value->type = JSON_TYPE_NUMBER;
-  char             *subtext = stringfn_substring(text, (int)start, end - start);
+  char             *subtext = stringfn_substring(text, (int)start, *offset - start);
   value->value->number = strtold(subtext, NULL);
   _json_free(subtext);
 
@@ -476,5 +492,64 @@ static bool _json_skip_whitespaces(char *text, size_t length, size_t *offset)
   }
 
   return(*offset < length);
+}
+
+
+static bool _json_parse_object_key(struct HashTable *object, char *text, size_t length, size_t *offset)
+{
+  if (object == NULL || text == NULL || (*offset + 4 > length) || text[*offset] != '"')
+  {
+    return(false);
+  }
+
+  // parse key
+  struct JsonValue *json_value = _json_parse_string(text, length, offset);
+  if (json_value == NULL)
+  {
+    return(false);
+  }
+  if (json_value->type != JSON_TYPE_STRING)
+  {
+    json_release_value(json_value);
+    return(false);
+  }
+
+  char *key = json_value->value->string;
+  _json_free(json_value);
+
+  // skip whitespaces
+  if (!_json_skip_whitespaces(text, length, offset) || text[*offset] != ':')
+  {
+    _json_free(key);
+    return(false);
+  }
+  *offset = *offset + 1;
+
+  // parse value
+  json_value = _json_parse(text, length, offset);
+  if (json_value == NULL)
+  {
+    _json_free(key);
+    return(false);
+  }
+
+  bool added = hashtable_insert(object, key, json_value, _json_release_hashtable_key_value);
+
+  if (!added)
+  {
+    _json_free(key);
+    json_release_value(json_value);
+    return(false);
+  }
+
+  return(true);
+} /* _json_parse_object_key */
+
+
+static void _json_release_hashtable_key_value(char *key, void *value)
+{
+  _json_free(key);
+  struct JsonValue *json_value = (struct JsonValue *)value;
+  json_release_value(json_value);
 }
 

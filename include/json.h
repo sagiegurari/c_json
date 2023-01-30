@@ -1,6 +1,8 @@
 #ifndef JSON_H
 #define JSON_H
 
+#include "hashtable.h"
+#include "vector.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -14,10 +16,6 @@ enum JsonType
   JSON_TYPE_NULL
 };
 
-struct JsonObject;
-
-struct JsonArray;
-
 struct JsonValue
 {
   enum JsonType        type;
@@ -26,11 +24,11 @@ struct JsonValue
 
 union JsonValueUnion
 {
-  struct JsonObject *object;
-  struct JsonArray  *array;
-  char              *string;
-  long double       number;
-  bool              boolean;
+  struct HashTable *object;
+  struct Vector    *array;
+  char             *string;
+  long double      number;
+  bool             boolean;
 };
 
 /**
@@ -46,11 +44,6 @@ struct JsonValue *json_parse(char * /* text */);
  * or freed strings must reside in the structure.
  */
 void json_release_value(struct JsonValue *);
-
-/**
- * Returns the json array size.
- */
-size_t json_array_size(struct JsonArray *);
 
 #endif
 
