@@ -20,6 +20,11 @@ jobs:
       with:
         repository: sagiegurari/cmake-modules
         path: target/cmake-modules
+    - name: Checkout c_string_buffer
+      uses: actions/checkout@v2
+      with:
+        repository: sagiegurari/c_string_buffer
+        path: target/c_string_buffer
     - name: Checkout c_stringfn
       uses: actions/checkout@v2
       with:
