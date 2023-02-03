@@ -515,6 +515,7 @@ static bool _json_parse_object_key(struct HashTable *object, char *text, size_t 
   }
 
   char *key = json_value->value->string;
+  _json_free(json_value->value);
   _json_free(json_value);
 
   // skip whitespaces

@@ -40,10 +40,10 @@ void test_impl()
   assert_num_equal(sub_value->value->number, 2L);
   json_release_value(value);
 
-  value = json_parse("[  1, \"test\", true, false, null, 2.2, {} ]");
+  value = json_parse("[  1, \"test\", true, false, null, 2.2, {} , [1, 2, 3]]");
   assert_true_with_description(value != NULL, "mixed array not detected");
   assert_true_with_description(value->type == JSON_TYPE_ARRAY, "array type not set");
-  assert_size_equal(vector_size(value->value->array), 7);
+  assert_size_equal(vector_size(value->value->array), 8);
   sub_value = vector_get(value->value->array, 0);
   assert_true(sub_value->type == JSON_TYPE_NUMBER);
   assert_num_equal(sub_value->value->number, 1L);
@@ -64,6 +64,12 @@ void test_impl()
   sub_value = vector_get(value->value->array, 6);
   assert_true(sub_value->type == JSON_TYPE_OBJECT);
   assert_size_equal(hashtable_size(sub_value->value->object), 0);
+  sub_value = vector_get(value->value->array, 7);
+  assert_true(sub_value->type == JSON_TYPE_ARRAY);
+  assert_size_equal(vector_size(sub_value->value->array), 3);
+  sub_value = vector_get(sub_value->value->array, 1);
+  assert_true(sub_value->type == JSON_TYPE_NUMBER);
+  assert_num_equal(sub_value->value->number, 2L);
   json_release_value(value);
 } /* test_impl */
 
