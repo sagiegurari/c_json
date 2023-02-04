@@ -39,6 +39,18 @@ union JsonValueUnion
 struct JsonValue *json_parse(char * /* text */);
 
 /**
+ * Converts the provided json value to string without any special formatting.
+ * In case of any error or invalid value, NULL will be returned.
+ */
+char *json_stringify(struct JsonValue *);
+
+/**
+ * Converts the provided json value to string with formatting based on the provided options.
+ * In case of any error or invalid value, NULL will be returned.
+ */
+char *json_stringify_with_options(struct JsonValue *, bool /* multi line */, size_t /* indentation */);
+
+/**
  * Releases the json value and all internal memory used.
  * All internal strings will also be released, therefore no const strings
  * or freed strings must reside in the structure.

@@ -19,6 +19,11 @@ static struct JsonValue *_json_parse_null(char *, size_t /* length */, size_t * 
 static bool _json_skip_whitespaces(char *, size_t /* length */, size_t * /* offset */);
 static bool _json_parse_object_key(struct HashTable *, char *, size_t /* length */, size_t * /* offset */);
 static void _json_release_hashtable_key_value(char *, void *);
+static bool _json_stringify(struct JsonValue *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */);
+static bool _json_stringify_object(struct HashTable *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */);
+static bool _json_stringify_array(struct Vector *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */);
+static bool _json_stringify_string(char *, struct StringBuffer *);
+static void _json_add_indentation(struct StringBuffer *, size_t /* indentation */);
 
 struct JsonValue *json_parse(char *text)
 {
@@ -44,6 +49,35 @@ struct JsonValue *json_parse(char *text)
   }
 
   return(value);
+}
+
+
+char *json_stringify(struct JsonValue *value)
+{
+  return(json_stringify_with_options(value, false /* multi line */, 0 /* indentation */));
+}
+
+
+char *json_stringify_with_options(struct JsonValue *value, bool multi_line, size_t indentation)
+{
+  if (value == NULL)
+  {
+    return(NULL);
+  }
+
+  struct StringBuffer *buffer = stringbuffer_new();
+
+  bool                done = _json_stringify(value, buffer, multi_line, indentation, 0, false);
+  if (!done)
+  {
+    stringbuffer_release(buffer);
+    return(NULL);
+  }
+
+  char *json_string = stringbuffer_to_string(buffer);
+  stringbuffer_release(buffer);
+
+  return(json_string);
 }
 
 
@@ -175,7 +209,8 @@ static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *o
   value->type          = JSON_TYPE_OBJECT;
   value->value->object = object;
 
-  bool looking_for_key = false;
+  bool found_separator      = false;
+  bool can_start_next_entry = true;
   for ( ; *offset < length; *offset = *offset + 1)
   {
     // skip whitespaces
@@ -187,17 +222,21 @@ static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *o
 
     size_t index = *offset;
 
-    if (looking_for_key)
+    if (found_separator)
     {
       if (text[index] == '"')
       {
-        looking_for_key = false;
-
         if (!_json_parse_object_key(object, text, length, offset))
         {
           json_release_value(value);
           return(NULL);
         }
+
+        // we are in next char now, but for loop will advance it one more, so go back 1
+        *offset = *offset - 1;
+
+        found_separator      = false;
+        can_start_next_entry = false;
       }
       else
       {
@@ -205,22 +244,29 @@ static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *o
         return(NULL);
       }
     }
-    else if (text[index] == '}')
+    else if (!found_separator && text[index] == '}')
     {
       *offset = *offset + 1;
       break;
     }
-    else if (text[index] == '"')
+    else if (can_start_next_entry && text[index] == '"')
     {
       if (!_json_parse_object_key(object, text, length, offset))
       {
         json_release_value(value);
         return(NULL);
       }
+
+      // we are in next char now, but for loop will advance it one more, so go back 1
+      *offset = *offset - 1;
+
+      can_start_next_entry = false;
+      found_separator      = false;
     }
-    else if (text[index] == ',')
+    else if (!found_separator && text[index] == ',')
     {
-      looking_for_key = true;
+      found_separator      = true;
+      can_start_next_entry = true;
     }
   }
 
@@ -554,3 +600,249 @@ static void _json_release_hashtable_key_value(char *key, void *value)
   json_release_value(json_value);
 }
 
+
+static bool _json_stringify(struct JsonValue *value, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent)
+{
+  if (value == NULL || buffer == NULL)
+  {
+    return(false);
+  }
+
+  if (multi_line && !skip_indent)
+  {
+    if (!stringbuffer_is_empty(buffer))
+    {
+      stringbuffer_append(buffer, '\n');
+    }
+
+    if (value->type != JSON_TYPE_OBJECT && value->type != JSON_TYPE_ARRAY)
+    {
+      _json_add_indentation(buffer, current_indentation);
+    }
+  }
+
+  switch (value->type)
+  {
+  case JSON_TYPE_OBJECT:
+    if (!_json_stringify_object(value->value->object, buffer, multi_line, indentation, current_indentation, skip_indent))
+    {
+      return(false);
+    }
+    break;
+
+  case JSON_TYPE_ARRAY:
+    if (!_json_stringify_array(value->value->array, buffer, multi_line, indentation, current_indentation, skip_indent))
+    {
+      return(false);
+    }
+    break;
+
+  case JSON_TYPE_STRING:
+    _json_stringify_string(value->value->string, buffer);
+    break;
+
+  case JSON_TYPE_NUMBER:
+    stringbuffer_append_long_double(buffer, value->value->number);
+    break;
+
+  case JSON_TYPE_BOOLEAN:
+    stringbuffer_append_bool(buffer, value->value->boolean);
+    break;
+
+  case JSON_TYPE_NULL:
+    stringbuffer_append_string(buffer, "null");
+    break;
+  }
+
+  return(true);
+} /* _json_stringify */
+
+
+static bool _json_stringify_object(struct HashTable *object, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent)
+{
+  if (object == NULL || buffer == NULL)
+  {
+    return(false);
+  }
+
+  if (multi_line && !skip_indent)
+  {
+    _json_add_indentation(buffer, current_indentation);
+  }
+  stringbuffer_append(buffer, '{');
+
+  size_t size = hashtable_size(object);
+  if (size)
+  {
+    struct HashTableEntries entries = hashtable_entries(object);
+
+    bool                    added            = false;
+    size_t                  next_indentation = indentation + current_indentation;
+    for (size_t index = 0; index < size; index++)
+    {
+      char             *key   = entries.keys[index];
+      struct JsonValue *value = (struct JsonValue *)entries.values[index];
+
+      if (key != NULL && value != NULL)
+      {
+        if (!added)
+        {
+          added = true;
+        }
+        else
+        {
+          stringbuffer_append(buffer, ',');
+        }
+
+        if (multi_line)
+        {
+          stringbuffer_append(buffer, '\n');
+          _json_add_indentation(buffer, next_indentation);
+        }
+
+        if (!_json_stringify_string(key, buffer))
+        {
+          return(false);
+        }
+        stringbuffer_append(buffer, ':');
+        if (multi_line)
+        {
+          stringbuffer_append(buffer, ' ');
+        }
+
+        if (!_json_stringify(value, buffer, multi_line, indentation, next_indentation, true))
+        {
+          return(false);
+        }
+      }
+    }
+
+    _json_free(entries.keys);
+    _json_free(entries.values);
+  }
+
+  if (multi_line)
+  {
+    stringbuffer_append(buffer, '\n');
+    _json_add_indentation(buffer, current_indentation);
+  }
+  stringbuffer_append(buffer, '}');
+
+  return(true);
+} /* _json_stringify_object */
+
+
+static bool _json_stringify_array(struct Vector *array, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent)
+{
+  if (array == NULL || buffer == NULL)
+  {
+    return(false);
+  }
+
+  if (multi_line && !skip_indent)
+  {
+    _json_add_indentation(buffer, current_indentation);
+  }
+  stringbuffer_append(buffer, '[');
+
+  size_t size             = vector_size(array);
+  bool   added            = false;
+  size_t next_indentation = indentation + current_indentation;
+  for (size_t index = 0; index < size; index++)
+  {
+    struct JsonValue *value = vector_get(array, index);
+
+    if (value != NULL)
+    {
+      if (!added)
+      {
+        added = true;
+      }
+      else
+      {
+        stringbuffer_append(buffer, ',');
+      }
+
+      if (!_json_stringify(value, buffer, multi_line, indentation, next_indentation, false))
+      {
+        return(false);
+      }
+    }
+  }
+
+  if (multi_line)
+  {
+    stringbuffer_append(buffer, '\n');
+    _json_add_indentation(buffer, current_indentation);
+  }
+  stringbuffer_append(buffer, ']');
+
+  return(true);
+} /* _json_stringify_array */
+
+
+static bool _json_stringify_string(char *text, struct StringBuffer *buffer)
+{
+  if (text == NULL || buffer == NULL)
+  {
+    return(false);
+  }
+
+  size_t length = strlen(text);
+
+  stringbuffer_append(buffer, '"');
+  for (size_t index = 0; index < length; index++)
+  {
+    char character = text[index];
+
+    if (character == '\b')
+    {
+      stringbuffer_append_string(buffer, "\\b");
+    }
+    else if (character == '\f')
+    {
+      stringbuffer_append_string(buffer, "\\f");
+    }
+    else if (character == '\n')
+    {
+      stringbuffer_append_string(buffer, "\\n");
+    }
+    else if (character == '\r')
+    {
+      stringbuffer_append_string(buffer, "\\r");
+    }
+    else if (character == '\t')
+    {
+      stringbuffer_append_string(buffer, "\\t");
+    }
+    else if (character == '"')
+    {
+      stringbuffer_append_string(buffer, "\\\"");
+    }
+    else if (character == '\\')
+    {
+      stringbuffer_append_string(buffer, "\\\\");
+    }
+    else
+    {
+      stringbuffer_append(buffer, character);
+    }
+  }
+  stringbuffer_append(buffer, '"');
+
+  return(true);
+} /* _json_stringify_string */
+
+
+static void _json_add_indentation(struct StringBuffer *buffer, size_t indentation)
+{
+  if (buffer == NULL)
+  {
+    return;
+  }
+
+  for (size_t index = 0; index < indentation; index++)
+  {
+    stringbuffer_append(buffer, ' ');
+  }
+}

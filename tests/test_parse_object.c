@@ -1,5 +1,4 @@
 #include "test.h"
-#include <stdio.h>
 
 
 void test_impl()
@@ -30,11 +29,11 @@ void test_impl()
   json_release_value(value);
 
   value = json_parse("{\"number\":1.6, \"null_key\" : null,\n"
-                     "\"bool_true\": true,\"bool_false\":false\n"
-                     "\"string\": \"my string\nsecond line\" \n"
+                     "\"bool_true\": true,\"bool_false\":false,\n"
+                     "\"string\": \"my string\nsecond line\" ,\n"
                      " \"arr\": [1, 2.7, 3]  \n"
-                     "\"obj\": {\"subkey\": 88}}, \"subobj\": {\"sub\":{\"subkey\": 77}}}");
-  assert_true_with_description(value != NULL, "number object not detected");
+                     ",\"obj\": {\"subkey\": 88}, \"subobj\": {\"sub\":{\"subkey\": 77}}}");
+  assert_true_with_description(value != NULL, "mixed object not detected");
   assert_true_with_description(value->type == JSON_TYPE_OBJECT, "object type not set");
   assert_size_equal(hashtable_size(value->value->object), 8);
   sub_value = hashtable_get(value->value->object, "number");
