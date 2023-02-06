@@ -51,6 +51,12 @@ char *json_stringify(struct JsonValue *);
 char *json_stringify_with_options(struct JsonValue *, bool /* multi line */, size_t /* indentation */);
 
 /**
+ * Parses the provided json string and stringifies it back with
+ * the provided formatting options.
+ */
+char *json_prettify(char *, bool /* multi line */, size_t /* indentation */);
+
+/**
  * Releases the json value and all internal memory used.
  * All internal strings will also be released, therefore no const strings
  * or freed strings must reside in the structure.

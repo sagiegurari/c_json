@@ -81,6 +81,23 @@ char *json_stringify_with_options(struct JsonValue *value, bool multi_line, size
 }
 
 
+char *json_prettify(char *value, bool multi_line, size_t indentation)
+{
+  struct JsonValue *parsed = json_parse(value);
+
+  if (parsed == NULL)
+  {
+    return(NULL);
+  }
+
+  char *formatted = json_stringify_with_options(parsed, multi_line, indentation);
+
+  json_release_value(parsed);
+
+  return(formatted);
+}
+
+
 void json_release_value(struct JsonValue *value)
 {
   if (value == NULL)
