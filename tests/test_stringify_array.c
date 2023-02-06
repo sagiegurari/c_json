@@ -14,7 +14,7 @@ void test_impl()
   assert_string_equal(string, "[\n"
                       "]");
   free(string);
-  json_release_value(value);
+  json_release(value);
 
   value  = json_parse("[1,2,\"test\",false,true,null,12.5,[true,false,[{\"key\":\"value\"},true]]]");
   string = json_stringify(value);
@@ -41,7 +41,7 @@ void test_impl()
                       "  ]\n"
                       "]");
   free(string);
-  json_release_value(value);
+  json_release(value);
 } /* test_impl */
 
 

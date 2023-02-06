@@ -10,13 +10,13 @@ void test_impl()
   assert_true_with_description(value != NULL, "empty object not detected");
   assert_true_with_description(value->type == JSON_TYPE_OBJECT, "object type not set");
   assert_size_equal(hashtable_size(value->value->object), 0);
-  json_release_value(value);
+  json_release(value);
 
   value = json_parse("{   }");
   assert_true_with_description(value != NULL, "empty object not detected");
   assert_true_with_description(value->type == JSON_TYPE_OBJECT, "object type not set");
   assert_size_equal(hashtable_size(value->value->object), 0);
-  json_release_value(value);
+  json_release(value);
 
   value = json_parse("{\"key\":1}");
   assert_true_with_description(value != NULL, "number object not detected");
@@ -26,7 +26,7 @@ void test_impl()
   assert_true_with_description(sub_value != NULL, "key not found");
   assert_true(sub_value->type == JSON_TYPE_NUMBER);
   assert_num_equal(sub_value->value->number, 1L);
-  json_release_value(value);
+  json_release(value);
 
   value = json_parse("{\"number\":1.6, \"null_key\" : null,\n"
                      "\"bool_true\": true,\"bool_false\":false,\n"
@@ -71,7 +71,7 @@ void test_impl()
   sub_value = hashtable_get(sub_value->value->object, "subkey");
   assert_true(sub_value->type == JSON_TYPE_NUMBER);
   assert_num_equal(sub_value->value->number, 77L);
-  json_release_value(value);
+  json_release(value);
 } /* test_impl */
 
 

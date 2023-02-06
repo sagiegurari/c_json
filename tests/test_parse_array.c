@@ -10,13 +10,13 @@ void test_impl()
   assert_true_with_description(value != NULL, "empty array not detected");
   assert_true_with_description(value->type == JSON_TYPE_ARRAY, "array type not set");
   assert_size_equal(vector_size(value->value->array), 0);
-  json_release_value(value);
+  json_release(value);
 
   value = json_parse("[   ]");
   assert_true_with_description(value != NULL, "empty array not detected");
   assert_true_with_description(value->type == JSON_TYPE_ARRAY, "array type not set");
   assert_size_equal(vector_size(value->value->array), 0);
-  json_release_value(value);
+  json_release(value);
 
   value = json_parse("[1]");
   assert_true_with_description(value != NULL, "number array not detected");
@@ -25,7 +25,7 @@ void test_impl()
   sub_value = vector_get(value->value->array, 0);
   assert_true(sub_value->type == JSON_TYPE_NUMBER);
   assert_num_equal(sub_value->value->number, 1L);
-  json_release_value(value);
+  json_release(value);
 
   value = json_parse("[1,2]");
   assert_true_with_description(value != NULL, "multi number array not detected");
@@ -37,7 +37,7 @@ void test_impl()
   sub_value = vector_get(value->value->array, 1);
   assert_true(sub_value->type == JSON_TYPE_NUMBER);
   assert_num_equal(sub_value->value->number, 2L);
-  json_release_value(value);
+  json_release(value);
 
   value = json_parse("[  1, \"test\", true, false, null, 2.2, {\"key\":\"value\"} , [1, 2, 3]]");
   assert_true_with_description(value != NULL, "mixed array not detected");
@@ -72,7 +72,7 @@ void test_impl()
   sub_value = vector_get(sub_value->value->array, 1);
   assert_true(sub_value->type == JSON_TYPE_NUMBER);
   assert_num_equal(sub_value->value->number, 2L);
-  json_release_value(value);
+  json_release(value);
 } /* test_impl */
 
 

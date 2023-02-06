@@ -61,7 +61,7 @@ char *json_prettify(char *, bool /* multi line */, size_t /* indentation */);
  * All internal strings will also be released, therefore no const strings
  * or freed strings must reside in the structure.
  */
-void json_release_value(struct JsonValue *);
+void json_release(struct JsonValue *);
 
 #endif
 

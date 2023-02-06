@@ -44,7 +44,7 @@ struct JsonValue *json_parse(char *text)
   if (offset < length)
   {
     // we have some leftovers that we can't parse
-    json_release_value(value);
+    json_release(value);
     return(NULL);
   }
 
@@ -92,13 +92,13 @@ char *json_prettify(char *value, bool multi_line, size_t indentation)
 
   char *formatted = json_stringify_with_options(parsed, multi_line, indentation);
 
-  json_release_value(parsed);
+  json_release(parsed);
 
   return(formatted);
 }
 
 
-void json_release_value(struct JsonValue *value)
+void json_release(struct JsonValue *value)
 {
   if (value == NULL)
   {
@@ -150,7 +150,7 @@ static void _json_release_json_array(struct Vector *array)
   for (size_t index = 0; index < count; index++)
   {
     struct JsonValue *value = vector_get(array, index);
-    json_release_value(value);
+    json_release(value);
   }
   vector_release(array);
 }
@@ -233,7 +233,7 @@ static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *o
     // skip whitespaces
     if (!_json_skip_whitespaces(text, length, offset))
     {
-      json_release_value(value);
+      json_release(value);
       return(NULL);
     }
 
@@ -245,7 +245,7 @@ static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *o
       {
         if (!_json_parse_object_key(object, text, length, offset))
         {
-          json_release_value(value);
+          json_release(value);
           return(NULL);
         }
 
@@ -257,7 +257,7 @@ static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *o
       }
       else
       {
-        json_release_value(value);
+        json_release(value);
         return(NULL);
       }
     }
@@ -270,7 +270,7 @@ static struct JsonValue *_json_parse_object(char *text, size_t length, size_t *o
     {
       if (!_json_parse_object_key(object, text, length, offset))
       {
-        json_release_value(value);
+        json_release(value);
         return(NULL);
       }
 
@@ -310,7 +310,7 @@ static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *of
     // skip whitespaces
     if (!_json_skip_whitespaces(text, length, offset))
     {
-      json_release_value(value);
+      json_release(value);
       return(NULL);
     }
 
@@ -325,7 +325,7 @@ static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *of
     {
       if (found_seperator)
       {
-        json_release_value(value);
+        json_release(value);
         return(NULL);
       }
       else
@@ -340,7 +340,7 @@ static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *of
       struct JsonValue *array_item = _json_parse(text, length, offset);
       if (array_item == NULL)
       {
-        json_release_value(value);
+        json_release(value);
         return(NULL);
       }
 
@@ -351,7 +351,7 @@ static struct JsonValue *_json_parse_array(char *text, size_t length, size_t *of
     }
     else
     {
-      json_release_value(value);
+      json_release(value);
       return(NULL);
     }
   }
@@ -573,7 +573,7 @@ static bool _json_parse_object_key(struct HashTable *object, char *text, size_t 
   }
   if (json_value->type != JSON_TYPE_STRING)
   {
-    json_release_value(json_value);
+    json_release(json_value);
     return(false);
   }
 
@@ -602,7 +602,7 @@ static bool _json_parse_object_key(struct HashTable *object, char *text, size_t 
   if (!added)
   {
     _json_free(key);
-    json_release_value(json_value);
+    json_release(json_value);
     return(false);
   }
 
@@ -614,7 +614,7 @@ static void _json_release_hashtable_key_value(char *key, void *value)
 {
   _json_free(key);
   struct JsonValue *json_value = (struct JsonValue *)value;
-  json_release_value(json_value);
+  json_release(json_value);
 }
 
 

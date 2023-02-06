@@ -13,7 +13,7 @@ void test_impl()
   string = json_stringify_with_options(value, true, 2);
   assert_string_equal(string, "null");
   free(string);
-  json_release_value(value);
+  json_release(value);
 
   value  = json_parse("true");
   string = json_stringify(value);
@@ -22,7 +22,7 @@ void test_impl()
   string = json_stringify_with_options(value, true, 2);
   assert_string_equal(string, "true");
   free(string);
-  json_release_value(value);
+  json_release(value);
 
   value  = json_parse("false");
   string = json_stringify(value);
@@ -31,7 +31,7 @@ void test_impl()
   string = json_stringify_with_options(value, true, 2);
   assert_string_equal(string, "false");
   free(string);
-  json_release_value(value);
+  json_release(value);
 
   value  = json_parse("0");
   string = json_stringify(value);
@@ -40,7 +40,7 @@ void test_impl()
   string = json_stringify_with_options(value, true, 2);
   assert_string_equal(string, "0.000000");
   free(string);
-  json_release_value(value);
+  json_release(value);
 
   value  = json_parse("12345");
   string = json_stringify(value);
@@ -49,7 +49,7 @@ void test_impl()
   string = json_stringify_with_options(value, true, 2);
   assert_string_equal(string, "12345.000000");
   free(string);
-  json_release_value(value);
+  json_release(value);
 
   value  = json_parse("123.45");
   string = json_stringify(value);
@@ -58,7 +58,7 @@ void test_impl()
   string = json_stringify_with_options(value, true, 2);
   assert_string_equal(string, "123.450000");
   free(string);
-  json_release_value(value);
+  json_release(value);
 
   value  = json_parse("-12345");
   string = json_stringify(value);
@@ -67,7 +67,7 @@ void test_impl()
   string = json_stringify_with_options(value, true, 2);
   assert_string_equal(string, "-12345.000000");
   free(string);
-  json_release_value(value);
+  json_release(value);
 
   value = json_parse("\"first\\\\line\\n\\n"
                      "second line\\tafter tab\"");
@@ -79,7 +79,7 @@ void test_impl()
   assert_string_equal(string, "\"first\\\\line\\n\\n"
                       "second line\\tafter tab\"");
   free(string);
-  json_release_value(value);
+  json_release(value);
 } /* test_impl */
 
 

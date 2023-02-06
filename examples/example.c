@@ -33,7 +33,7 @@ int main()
   free(json_string);
 
   // once done, release the parsed object
-  json_release_value(value);
+  json_release(value);
 
   // you can also prettify json strings which will
   // parse them and stringify them back with the
