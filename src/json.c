@@ -8,7 +8,7 @@
 // private functions
 static void _json_free(void *);
 static void _json_release_json_array(struct Vector *);
-static struct JsonValue *_json_create_null_value();
+static struct JsonValue *_json_create_null_value(void);
 static struct JsonValue *_json_parse(char *, size_t /* length */, size_t * /* offset */);
 static struct JsonValue *_json_parse_object(char *, size_t /* length */, size_t * /* offset */);
 static struct JsonValue *_json_parse_array(char *, size_t /* length */, size_t * /* offset */);
@@ -155,7 +155,7 @@ static void _json_release_json_array(struct Vector *array)
   vector_release(array);
 }
 
-static struct JsonValue *_json_create_null_value()
+static struct JsonValue *_json_create_null_value(void)
 {
   struct JsonValue *value = malloc(sizeof(struct JsonValue));
 
