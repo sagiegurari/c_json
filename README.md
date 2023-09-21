@@ -19,6 +19,7 @@ This library provides both parsing JSON text/files and creating JSON text/files.
 <a name="usage"></a>
 ## Usage
 
+<!-- example source start -->
 ```c
 #include "json.h"
 #include <stdio.h>
@@ -66,6 +67,7 @@ int main()
   return(0);
 } /* main */
 ```
+<!-- example source end -->
 
 ## Contributing
 See [contributing guide](.github/CONTRIBUTING.md)
