@@ -18,17 +18,17 @@ void test_impl()
 
   value  = json_parse("[1,2,\"test\",false,true,null,12.5,[true,false,[{\"key\":\"value\"},true]]]");
   string = json_stringify(value);
-  assert_string_equal(string, "[1.000000,2.000000,\"test\",false,true,null,12.500000,[true,false,[{\"key\":\"value\"},true]]]");
+  assert_string_equal(string, "[1,2,\"test\",false,true,null,12.5,[true,false,[{\"key\":\"value\"},true]]]");
   free(string);
   string = json_stringify_with_options(value, true, 2);
   assert_string_equal(string, "[\n"
-                      "  1.000000,\n"
-                      "  2.000000,\n"
+                      "  1,\n"
+                      "  2,\n"
                       "  \"test\",\n"
                       "  false,\n"
                       "  true,\n"
                       "  null,\n"
-                      "  12.500000,\n"
+                      "  12.5,\n"
                       "  [\n"
                       "    true,\n"
                       "    false,\n"

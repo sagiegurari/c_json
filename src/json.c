@@ -19,10 +19,11 @@ static struct JsonValue *_json_parse_null(char *, size_t /* length */, size_t * 
 static bool _json_skip_whitespaces(char *, size_t /* length */, size_t * /* offset */);
 static bool _json_parse_object_key(struct HashTable *, char *, size_t /* length */, size_t * /* offset */);
 static void _json_release_hashtable_key_value(char *, void *);
-static bool _json_stringify(struct JsonValue *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */);
-static bool _json_stringify_object(struct HashTable *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */);
-static bool _json_stringify_array(struct Vector *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */);
+static bool _json_stringify(struct JsonValue *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */, struct StringBuffer * /* temporary work buffer */);
+static bool _json_stringify_object(struct HashTable *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */, struct StringBuffer * /* work buffer */);
+static bool _json_stringify_array(struct Vector *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */, struct StringBuffer * /* work buffer */);
 static bool _json_stringify_string(char *, struct StringBuffer *);
+static bool _json_stringify_number(double, struct StringBuffer * /* output buffer */, struct StringBuffer * /* work buffer */);
 static void _json_add_indentation(struct StringBuffer *, size_t /* indentation */);
 
 struct JsonValue *json_parse(char *text)
@@ -65,9 +66,10 @@ char *json_stringify_with_options(struct JsonValue *value, bool multi_line, size
     return(NULL);
   }
 
-  struct StringBuffer *buffer = stringbuffer_new();
-
-  bool                done = _json_stringify(value, buffer, multi_line, indentation, 0, false);
+  struct StringBuffer *buffer      = stringbuffer_new();
+  struct StringBuffer *work_buffer = stringbuffer_new_with_options(100, true);
+  bool                done         = _json_stringify(value, buffer, multi_line, indentation, 0, false, work_buffer);
+  stringbuffer_release(work_buffer);
   if (!done)
   {
     stringbuffer_release(buffer);
@@ -618,9 +620,9 @@ static void _json_release_hashtable_key_value(char *key, void *value)
 }
 
 
-static bool _json_stringify(struct JsonValue *value, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent)
+static bool _json_stringify(struct JsonValue *value, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent, struct StringBuffer *work_buffer)
 {
-  if (value == NULL || buffer == NULL)
+  if (value == NULL || buffer == NULL || work_buffer == NULL)
   {
     return(false);
   }
@@ -641,14 +643,14 @@ static bool _json_stringify(struct JsonValue *value, struct StringBuffer *buffer
   switch (value->type)
   {
   case JSON_TYPE_OBJECT:
-    if (!_json_stringify_object(value->value->object, buffer, multi_line, indentation, current_indentation, skip_indent))
+    if (!_json_stringify_object(value->value->object, buffer, multi_line, indentation, current_indentation, skip_indent, work_buffer))
     {
       return(false);
     }
     break;
 
   case JSON_TYPE_ARRAY:
-    if (!_json_stringify_array(value->value->array, buffer, multi_line, indentation, current_indentation, skip_indent))
+    if (!_json_stringify_array(value->value->array, buffer, multi_line, indentation, current_indentation, skip_indent, work_buffer))
     {
       return(false);
     }
@@ -659,7 +661,7 @@ static bool _json_stringify(struct JsonValue *value, struct StringBuffer *buffer
     break;
 
   case JSON_TYPE_NUMBER:
-    stringbuffer_append_long_double(buffer, value->value->number);
+    _json_stringify_number(value->value->number, buffer, work_buffer);
     break;
 
   case JSON_TYPE_BOOLEAN:
@@ -675,9 +677,9 @@ static bool _json_stringify(struct JsonValue *value, struct StringBuffer *buffer
 } /* _json_stringify */
 
 
-static bool _json_stringify_object(struct HashTable *object, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent)
+static bool _json_stringify_object(struct HashTable *object, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent, struct StringBuffer *work_buffer)
 {
-  if (object == NULL || buffer == NULL)
+  if (object == NULL || buffer == NULL || work_buffer == NULL)
   {
     return(false);
   }
@@ -727,7 +729,7 @@ static bool _json_stringify_object(struct HashTable *object, struct StringBuffer
           stringbuffer_append(buffer, ' ');
         }
 
-        if (!_json_stringify(value, buffer, multi_line, indentation, next_indentation, true))
+        if (!_json_stringify(value, buffer, multi_line, indentation, next_indentation, true, work_buffer))
         {
           return(false);
         }
@@ -749,9 +751,9 @@ static bool _json_stringify_object(struct HashTable *object, struct StringBuffer
 } /* _json_stringify_object */
 
 
-static bool _json_stringify_array(struct Vector *array, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent)
+static bool _json_stringify_array(struct Vector *array, struct StringBuffer *buffer, bool multi_line, size_t indentation, size_t current_indentation, bool skip_indent, struct StringBuffer *work_buffer)
 {
-  if (array == NULL || buffer == NULL)
+  if (array == NULL || buffer == NULL || work_buffer == NULL)
   {
     return(false);
   }
@@ -780,7 +782,7 @@ static bool _json_stringify_array(struct Vector *array, struct StringBuffer *buf
         stringbuffer_append(buffer, ',');
       }
 
-      if (!_json_stringify(value, buffer, multi_line, indentation, next_indentation, false))
+      if (!_json_stringify(value, buffer, multi_line, indentation, next_indentation, false, work_buffer))
       {
         return(false);
       }
@@ -849,6 +851,51 @@ static bool _json_stringify_string(char *text, struct StringBuffer *buffer)
 
   return(true);
 } /* _json_stringify_string */
+
+
+static bool _json_stringify_number(double value, struct StringBuffer *buffer, struct StringBuffer *work_buffer)
+{
+  if (buffer == NULL || work_buffer == NULL)
+  {
+    return(false);
+  }
+
+  stringbuffer_clear(work_buffer);
+  stringbuffer_append_long_double(work_buffer, value);
+  char   *number_string   = stringbuffer_to_string(work_buffer);
+  size_t length           = strlen(number_string);
+  size_t length_to_remove = 0;
+  bool   stop_removing    = false;
+  for (size_t index = length - 1; index > 0; index--)
+  {
+    char character = number_string[index];
+    if (character == '.')
+    {
+      if (length_to_remove > 0)
+      {
+        if (!stop_removing)
+        {
+          length_to_remove = length_to_remove + 1;
+        }
+        length = length - length_to_remove;
+      }
+      break;
+    }
+    else if (character == '0' && !stop_removing)
+    {
+      length_to_remove = length_to_remove + 1;
+    }
+    else
+    {
+      stop_removing = true;
+    }
+  }
+
+  stringbuffer_append_string_with_options(buffer, number_string, 0, length);
+  free(number_string);
+
+  return(true);
+} /* _json_stringify_number */
 
 
 static void _json_add_indentation(struct StringBuffer *buffer, size_t indentation)

@@ -35,37 +35,37 @@ void test_impl()
 
   value  = json_parse("0");
   string = json_stringify(value);
-  assert_string_equal(string, "0.000000");
+  assert_string_equal(string, "0");
   free(string);
   string = json_stringify_with_options(value, true, 2);
-  assert_string_equal(string, "0.000000");
+  assert_string_equal(string, "0");
   free(string);
   json_release(value);
 
   value  = json_parse("12345");
   string = json_stringify(value);
-  assert_string_equal(string, "12345.000000");
+  assert_string_equal(string, "12345");
   free(string);
   string = json_stringify_with_options(value, true, 2);
-  assert_string_equal(string, "12345.000000");
+  assert_string_equal(string, "12345");
   free(string);
   json_release(value);
 
-  value  = json_parse("123.45");
+  value  = json_parse("123.401");
   string = json_stringify(value);
-  assert_string_equal(string, "123.450000");
+  assert_string_equal(string, "123.401");
   free(string);
   string = json_stringify_with_options(value, true, 2);
-  assert_string_equal(string, "123.450000");
+  assert_string_equal(string, "123.401");
   free(string);
   json_release(value);
 
   value  = json_parse("-12345");
   string = json_stringify(value);
-  assert_string_equal(string, "-12345.000000");
+  assert_string_equal(string, "-12345");
   free(string);
   string = json_stringify_with_options(value, true, 2);
-  assert_string_equal(string, "-12345.000000");
+  assert_string_equal(string, "-12345");
   free(string);
   json_release(value);
 
