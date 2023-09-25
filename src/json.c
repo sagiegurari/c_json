@@ -23,7 +23,7 @@ static bool _json_stringify(struct JsonValue *, struct StringBuffer *, bool /* m
 static bool _json_stringify_object(struct HashTable *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */, struct StringBuffer * /* work buffer */);
 static bool _json_stringify_array(struct Vector *, struct StringBuffer *, bool /* multi line */, size_t /* indentation */, size_t /* current indentation */, bool /* skip indent */, struct StringBuffer * /* work buffer */);
 static bool _json_stringify_string(char *, struct StringBuffer *);
-static bool _json_stringify_number(double, struct StringBuffer * /* output buffer */, struct StringBuffer * /* work buffer */);
+static bool _json_stringify_number(long double, struct StringBuffer * /* output buffer */, struct StringBuffer * /* work buffer */);
 static void _json_add_indentation(struct StringBuffer *, size_t /* indentation */);
 
 struct JsonValue *json_parse(char *text)
@@ -853,7 +853,7 @@ static bool _json_stringify_string(char *text, struct StringBuffer *buffer)
 } /* _json_stringify_string */
 
 
-static bool _json_stringify_number(double value, struct StringBuffer *buffer, struct StringBuffer *work_buffer)
+static bool _json_stringify_number(long double value, struct StringBuffer *buffer, struct StringBuffer *work_buffer)
 {
   if (buffer == NULL || work_buffer == NULL)
   {
