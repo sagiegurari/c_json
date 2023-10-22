@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+### v0.3.1 (2023-10-22)
+
+* Fix unicode escape detection
+
 ### v0.3.0 (2023-09-25)
 
 * Make numeric stringify be compatible with standard json libraries

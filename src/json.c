@@ -409,6 +409,10 @@ static struct JsonValue *_json_parse_string(char *text, size_t length, size_t *o
       {
         stringbuffer_append(buffer, '\\');
       }
+      else if (character == 'u')
+      {
+        stringbuffer_append_string(buffer, "\\u");
+      }
       else
       {
         // invalid/unsupported escape
